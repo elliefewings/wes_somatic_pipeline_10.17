@@ -1,0 +1,167 @@
+---
+output: html_document
+params: 
+  dataset: ""
+  working_folder: ""
+  data_file: ""
+  min_dp: ""
+  min_qual: ""
+---
+
+```{r setup_read_data, include=FALSE}
+
+# Make html report for genotyping step
+# Alexey Larionov
+# 31Aug2016
+
+# Read command line parameters
+
+ds <- params$dataset
+wf <- params$working_folder
+df <- params$data_file
+min.dp <- params$min_dp
+min.qual <- params$min_qual
+
+#ds <- "IGP_L1"
+#wf <- "/scratch/medgen/users/eleanor/Pipeline_working_directory/gastric_Aug16/gastric/IGP_L1_raw_vcf/histograms/"
+#df <- "/scratch/medgen/users/eleanor/Pipeline_working_directory/gastric_Aug16/gastric/IGP_L1_raw_vcf/histograms/IGP_L1_histograms_data.txt"
+#min.dp <- "240"
+#min.qual <- "200"
+
+# Set root folder
+library(knitr)
+opts_knit$set(root.dir = wf)
+
+# Set chunks' options
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.align = 'center', fig.path=wf, echo=FALSE)
+
+# Read data
+x <- read.table(df, header=TRUE)
+attach(x)
+passed.filters <- FILTER == "PASS"
+
+# Count numbers of variants
+n.all <- format(dim(x)[1], big.mark = ",", trim=TRUE, scientific = FALSE)
+n.passed <- format(sum(passed.filters), big.mark = ",", trim=TRUE, scientific = FALSE)
+
+```
+
+<center> <H1> `r ds` </H1> </center> 
+<br>
+<center> <H3> Total number of variants in VCF: `r n.all` </H3> </center>
+<br>
+<center> <H4> File contains only variants passed filters: `r n.passed` </H4> </center> 
+<center> <H4> The filters are: DP > `r min.dp` and QUAL > `r min.qual`</H4> </center> 
+<br>
+
+# start_time
+
+```{r start_time}
+
+Sys.time()
+
+```
+
+# counts
+
+```{r counts}
+
+library(printr, lib='/scratch/medgen/tools/r/R-3.2.2/lib64/R/library/')
+
+# Filters summary
+n.types.all <- format(sum(table(FILTER, TYPE)), big.mark = ",", trim=TRUE, scientific = FALSE)
+c.types.all <- paste("Filters summary (all variants in the file, n=",n.types.all,")", sep ="")
+knitr::kable(table(FILTER, TYPE), format.args=list(big.mark=","), caption=c.types.all)
+
+# Recode MultiAllelic
+MultiAllelic <- as.vector(MultiAllelic)
+MultiAllelic[is.na(MultiAllelic)] <- "BiAllelic"
+MultiAllelic[MultiAllelic == "true"] <- "MultiAllelic"
+
+# MultiAllelic - all
+n.ma.all <- format(sum(table(MultiAllelic, TYPE)), big.mark = ",", trim=TRUE, scientific = FALSE)
+c.ma.all <- paste("Bi- and Multi- Allelic variants (",n.ma.all,")", sep ="")
+knitr::kable(table(MultiAllelic, TYPE), format.args=list(big.mark=","), caption=c.ma.all)
+
+```
+
+# get_avg_AS_VQSLOD
+
+```{r get_avg_AS_VQSLOD}
+
+myAvg_AS_VQSLOD <- function(x) {
+  options(warn=-1)
+  a <- as.vector(x)
+  b <- unlist(strsplit(a,","))
+  c <- as.numeric(b)
+  d <- mean(c, na.rm=TRUE)
+  options(warn=0)
+  d
+}
+
+VQSLOD <- as.numeric(lapply(AS_VQSLOD, myAvg_AS_VQSLOD))
+  
+```
+
+# SNP_VQSLOD_histogram
+
+```{r SNP_VQSLOD_histogram}
+
+hist(VQSLOD[VQSLOD >=-30 & VQSLOD <= 30 & TYPE == "SNP"], breaks=100, 
+     main="SNPs VQSLOD (zoom -30 to 30)", xlim=c(-30,30), xlab="VQSLOD")
+
+```
+
+# INDEL_VQSLOD_histogram
+
+```{r INDEL_VQSLOD_histograms}
+
+hist(VQSLOD[VQSLOD >=-30 & VQSLOD <= 30 & TYPE == "INDEL"], breaks=100, 
+     main="INDELs VQSLOD (zoom -30 to 30)", xlim=c(-30,30), xlab="VQSLOD")
+
+```
+
+# MIXED_VQSLOD_histogram
+
+```{r MIXED_VQSLOD_histogram}
+
+hist(VQSLOD[VQSLOD >=-30 & VQSLOD <= 30 & TYPE == "MIXED"], breaks=100, 
+     main="MIXEDs VQSLOD (zoom -30 to 30)", xlim=c(-30,30), xlab="VQSLOD")
+
+```
+
+# DP_histogram
+
+```{r DP_histogram}
+
+DP.cap <- floor(quantile(DP, 0.99)) # exclude 1% of excessive dp
+DP.zm.main <- paste("DP (cumulative over all samples, zoom 0 - ",DP.cap,")", sep="")
+hist(DP[DP < DP.cap], breaks=100, xlim=c(0,DP.cap), main=DP.zm.main, xlab="DP")
+
+```
+
+# QUAL_histogram
+
+```{r QUAL_histogram}
+
+hist(QUAL[QUAL < 750], breaks=100, xlim=c(0,750), main="QUAL (zoom 0 - 750)", xlab="QUAL")
+
+```
+
+# Clenaup
+
+```{r Clenaup}
+
+detach(x)
+
+```
+
+# final_section
+
+```{r final_section}
+
+ls()
+sessionInfo()
+Sys.time()
+
+```

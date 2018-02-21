@@ -1,0 +1,112 @@
+Job description file for wes library merge pipeline
+Ellie Fewings, 26Oct17 
+
+TEMPLATE v2
+
+=========== Data location and analysis settings =============
+
+Data server: admin@mgqnap.medschl.cam.ac.uk
+Project location: /share/eleanor/gastric_Aug16
+
+project: gastric
+library: IGP_L1
+lanes: lane1 lane2 lane3 lane4
+
+tests_set: full
+Allowed values: full, limited
+
+run_qualimap: no
+run_samstat: no
+Allowed values: yes, no
+
+======================= HPC settings ========================
+
+working_folder: /scratch/medgen/users/eleanor/Pipeline_working_directory/gastric_Aug16
+
+Account to use for copying source files into HPC: TISCHKOWITZ-SL2
+Max time requested for copying source files (hrs.min.sec): 02.00.00
+
+Account to use for merging and QC: TISCHKOWITZ-SL2
+Max time requested for merging and QC (hrs.min.sec): 05.00.00
+
+Account to use for moving results out of HPC: TISCHKOWITZ-SL2
+Max time requested for moving results out of HPC (hrs.min.sec): 02.00.00
+
+===================== Pipeline summary ======================
+
+#Pipeline merges bam files from multiple lanes for a wes library.  
+#
+#Then it calculated a number of metrics for the merged bam files:
+#- flagstat (samtools)
+#- mark-duplicates stats (picard)
+#- insert sizes stats (picard)
+#- alignment summary metrics (picard)
+#- hybridisation selection metrics (picard)
+#- Qualimap report
+#- Samstat report
+#- DiagnoseTargets and QualifyMissingIntervals (metrics from gatk - not yet implemented)
+#
+#Metrics include reports for each sample separately as well as summary 
+#tables and plots for all samples on the lane. 
+
+===================== Standard settings =====================
+
+scripts_folder: /scratch/medgen/scripts/wes_somatic_pipeline_10.17/p02_wes_library_merge_and_qc
+start_script: a00_start_pipeline.sh
+
+Tools
+-----
+
+tools_folder: /scratch/medgen/tools
+
+java: java/jre1.8.0_40/bin/java
+
+samtools: samtools/samtools-1.2/bin/samtools
+samtools_folder: samtools/samtools-1.2/bin
+
+picard: picard/picard-2.6.0/picard.jar
+
+r_folder: r/R-3.2.0/bin
+
+qualimap: qualimap/qualimap_v2.1.1/qualimap.modified
+
+gnuplot: gnuplot/gnuplot-5.0.1/bin/gnuplot
+LiberationSansRegularTTF: fonts/liberation-fonts-ttf-2.00.1/LiberationSans-Regular.ttf
+
+samstat: samstat/samstat-1.5.1/bin/samstat
+
+Resources
+---------
+
+resources_folder: /scratch/medgen/resources
+
+ref_genome: gatk_bundle/b37/decompressed/human_g1k_v37.fasta
+
+bait_set_name: Nexera_Rapid_Capture_Exome
+probes_intervals: illumina_nextera/nexterarapidcapture_exome_probes_v1.2.b37.intervals
+targets_intervals: illumina_nextera/nexterarapidcapture_exome_targetedregions_v1.2.b37.intervals
+targets_bed_3: illumina_nextera/nexterarapidcapture_exome_targetedregions_v1.2.b37.bed
+targets_bed_6: illumina_nextera/nexterarapidcapture_exome_targetedregions_v1.2.b37.6.bed
+
+bed_6 is for Qualimap feature-file, which does not look fully working anyway ...
+
+Working sub-folders
+-------------------
+
+logs_folder: f00_logs
+
+bam_folder: f01_bams
+
+flagstat_folder: f02_metrics/f01_flagstat
+
+picard_mkdup_folder: f02_metrics/f02_picard/f01_mkdup_metrics
+picard_inserts_folder: f02_metrics/f02_picard/f02_inserts_metrics
+picard_alignment_folder: f02_metrics/f02_picard/f03_alignment_metrics
+picard_hybridisation_folder: f02_metrics/f02_picard/f04_hybridisation_metrics
+picard_summary_folder: f02_metrics/f02_picard/f05_metrics_summaries
+
+qualimap_results_folder: f02_metrics/f03_qualimap
+samstat_results_folder: f02_metrics/f04_samstat
+
+gatk_diagnose_targets_folder: f02_metrics/f05_gatk/f01_diagnose_targets
+gatk_depth_of_coverage_folder: f02_metrics/f05_gatk/f02_depth_of_coverage

@@ -1,0 +1,72 @@
+Job description file to split and annotate VCF
+Ellie Fewings, 26Oct17
+
+TEMPLATE v1
+
+=========== Data location and analysis settings =============
+
+Data server: admin@mgqnap.medschl.cam.ac.uk
+Project location: /share/eleanor/gastric_Aug16
+
+project: gastric
+dataset: IGP_L1_vqsr_shf
+
+======================= HPC settings ========================
+
+working_folder: /scratch/medgen/users/eleanor/Pipeline_working_directory/gastric_Aug16
+
+Account to use on HPC: TISCHKOWITZ-SL2
+Max time to request (hrs.min.sec): 03.00.00
+
+==================== Pipeline summary =======================
+
+#This step 
+# - splits multiallelic variants into separate lines 
+# - annotates with AN, AC, AF from 1k & Exac
+# - adds rs- IDs from and dbSNP
+# - annotates with VEP
+
+===================== Standard settings =====================
+
+scripts_folder: /scratch/medgen/scripts/wes_somatic_pipeline_10.17/p06_wes_split_annotate
+start_script: a00_start_pipeline.sh
+
+Tools
+-----
+
+tools_folder: /scratch/medgen/tools
+java: java/jre1.8.0_40/bin/java
+gatk: gatk/gatk-3.6-0/GenomeAnalysisTK.jar
+
+ensembl_api_folder: ensembl
+ensembl_version: v82
+vep_script: ensembl-tools/scripts/variant_effect_predictor/variant_effect_predictor.pl
+vep_cache: grch37_vep_cache
+
+Resources
+---------
+
+resources_folder: /scratch/medgen/resources
+
+decompressed_bundle_folder: gatk_bundle/b37/decompressed
+ref_genome: human_g1k_v37.fasta
+dbsnp_138: dbsnp_138.b37.vcf
+
+targets_folder: illumina_nextera
+targets_intervals: nexterarapidcapture_exome_targetedregions_v1.2.b37.intervals
+
+kgen_folder: phase3_1k_release20130502/vcfs
+kgen_split_vcf: ALL.wgs.phase3_shapeit2_mvncall_integrated_v5a.20130502.sites.fixed.split.vcf
+
+exac_folder: exac
+exac_non_tcga_split_vcf: ExAC_nonTCGA.r0.3.1.sites.vep.filt.split.vcf.gz
+
+Working sub-folders
+-------------------
+
+suffix: sma_ann
+
+Additional settings
+-------------------
+
+vep_fields: SYMBOL,Allele,Existing_variation,Consequence,IMPACT,CLIN_SIG,SIFT,PolyPhen,cDNA_position,CDS_position,Codons,Protein_position,Amino_acids,DISTANCE,STRAND,SYMBOL_SOURCE

@@ -1,0 +1,243 @@
+---
+output: html_document
+params: 
+  dataset: ""
+  working_folder: ""
+  vv_file: "" 
+  kgen_file: "" 
+  exac_file: "" 
+  gt_file: ""
+  gt_add_file: ""
+  gt_dom_file: ""
+  gt_rec_file: ""
+  ad_file: ""
+  lod_file: ""
+---
+
+```{r setup_read_data, include=FALSE}
+
+# Make html report to check exported text files
+# Alexey Larionov
+# 09Sep2016
+
+# Read command line parameters
+ds <- params$dataset
+wf <- params$working_folder
+vv.file <- params$vv_file
+kgen.file <- params$kgen_file
+exac.file <- params$exac_file
+gt.file <- params$gt_file
+gt.add.file <- params$gt_add_file
+gt.dom.file <- params$gt_dom_file
+gt.rec.file <- params$gt_rec_file
+ad.file <- params$ad_file
+lod.file <- params$lod_file
+
+#ds <- "IGP_L1_vqsr_shf_sma_ann"
+#wf <- "/scratch/medgen/users/eleanor/Pipeline_working_directory/macT_Aug17/macT_Aug17/macT_Aug17_lod_std_sma_ann_txt"
+#vv.file <- "macT_Aug17_lod_std_sma_ann_VV.txt"
+#kgen.file <- "IGP_L1_vqsr_shf_sma_ann_kgen.txt"
+#exac.file <- "IGP_L1_vqsr_shf_sma_ann_exac.txt"
+#gt.file <- "IGP_L1_vqsr_shf_sma_ann_GT.txt"
+#gt.add.file <- "IGP_L1_vqsr_shf_sma_ann_GT_add.txt"
+#gt.dom.file <- "IGP_L1_vqsr_shf_sma_ann_GT_dom.txt"
+#gt.rec.file <- "IGP_L1_vqsr_shf_sma_ann_GT_rec.txt"
+#ad.file <- "IGP_L1_vqsr_shf_sma_ann_AD.txt"
+#lod.file <- "IGP_L1_vqsr_shf_sma_ann_LOD.txt"
+
+# Set root folder
+library(knitr)
+opts_knit$set(root.dir = wf)
+#setwd(wf)
+
+# Required libraries
+library(dplyr) # for piping, filter, select etc
+library(stringr) # for str_replace_all
+
+```
+
+<center> <H1> `r ds` </H1> </center>
+<center> <H3> Testing exported tables in R </H3> </center> 
+<br>
+
+# start_time
+
+```{r start_time}
+
+Sys.time()
+
+```
+
+# Check and reshape VCF-VEP annotations (VV)
+
+```{r vv}
+
+# Read VV table
+vv.df <- read.table(vv.file, header = TRUE, sep = "\t", quote = "")
+
+# Summary for VV table
+dim(vv.df)
+colnames(vv.df)
+#vv.df[1:3,1:3]
+
+# Change "" to NAs
+NA -> vv.df$QUAL[vv.df$QUAL == ""]
+
+NA -> vv.df$CLIN_SIG[vv.df$CLIN_SIG == ""]
+NA -> vv.df$SIFT[vv.df$SIFT == ""]
+NA -> vv.df$PolyPhen[vv.df$PolyPhen == ""]
+
+NA -> vv.df$cDNA_position[vv.df$cDNA_position == ""]
+NA -> vv.df$CDS_position[vv.df$CDS_position == ""]
+NA -> vv.df$Codons[vv.df$Codons == ""]
+NA -> vv.df$Protein_position[vv.df$Protein_position == ""]
+NA -> vv.df$Amino_acids[vv.df$Amino_acids == ""]
+
+NA -> vv.df$SYMBOL[vv.df$SYMBOL == ""]
+NA -> vv.df$SYMBOL_SOURCE[vv.df$SYMBOL_SOURCE == ""]
+
+# Change "." to NAs
+NA -> vv.df$ID[vv.df$ID == "."]
+
+# Split SIFT
+vv.df <- 
+  vv.df %>% 
+  mutate(SIFT_call=sub("\\(.*\\)","",SIFT)) %>% 
+  mutate(SIFT_score=as.numeric(
+    sub(".*\\(","", sub("\\)","",SIFT)))) %>% 
+  select(-SIFT)
+
+# Split PolyPhen
+vv.df <- 
+  vv.df %>% 
+  mutate(PolyPhen_call=sub("\\(.*\\)","",PolyPhen)) %>% 
+  mutate(PolyPhen_score=as.numeric(
+    sub(".*\\(","", sub("\\)","",PolyPhen)))) %>% 
+  select(-PolyPhen)
+
+# Add multiallelic flag
+Multiallelic <- is.na(vv.df$LocID)
+sum(Multiallelic)
+vv.df <- cbind(vv.df, Multiallelic)
+vv.df <- vv.df %>% select(-LocID)
+
+# Summary for multiallelic sites
+
+if (sum(vv.df$Multiallelic) > 0){
+  x <- vv.df[vv.df$Multiallelic,]
+  y <- paste(x$CHROM, x$POS, x$REF, sep="_")
+  z <- table(y)
+  hist(z, ylim=c(0, 1.2*length(z)), labels=TRUE, 
+     main=paste("Multiallelic sites: ", length(y), " of ", length(vv.df$Multiallelic)))
+  rm(x,y,z)
+}
+
+cat("Just one allele may be retatined for a multiallelic site, if \n - the other allele was * \n - there was no AC/AN data for the other allele(s)")
+
+# Save updated VV table
+write.table(vv.df, vv.file, row.names=FALSE, col.names = TRUE, sep = "\t", quote = FALSE)
+
+# Summary for updated VV table
+dim(vv.df)
+colnames(vv.df)
+#vv.df[1:3,1:3]
+
+rm(vv.df)
+
+```
+
+# 1k annotations (kgen)
+
+```{r kgen}
+kgen.df <- read.table(kgen.file, header = TRUE, sep = "\t", quote = "")
+dim(kgen.df)
+str(kgen.df)
+#kgen.df[1:3,1:3]
+rm(kgen.df)
+```
+
+# Exac annotations (exac)
+
+```{r exac}
+exac.df <- read.table(exac.file, header = TRUE, sep = "\t", quote = "")
+dim(exac.df)
+str(exac.df)
+#exac.df[1:3,1:3]
+
+# Change "." to NAs
+NA -> exac.df$exac_non_TCGA.AC_FEMALE[exac.df$exac_non_TCGA.AC_FEMALE == "."]
+NA -> exac.df$exac_non_TCGA.AC_MALE[exac.df$exac_non_TCGA.AC_MALE == "."]
+
+# Save updated exac table
+write.table(exac.df, exac.file, row.names=FALSE, col.names = TRUE, sep = "\t", quote = FALSE)
+
+rm(exac.df)
+```
+
+#Genotypes (GT)
+
+```{r gt}
+gt.df <- read.table(gt.file, header = TRUE, sep = "\t", quote = "")
+dim(gt.df)
+colnames(gt.df)
+#gt.df[1:3,1:3]
+rm(gt.df)
+```
+
+#Genotypes additive (GT add)
+
+```{r gt_add}
+gt.add.df <- read.table(gt.add.file, header = TRUE, sep = "\t", quote = "")
+dim(gt.add.df)
+summary(as.factor(as.matrix(gt.add.df)))
+#gt.add.df[1:3,1:3]
+rm(gt.add.df)
+```
+
+#Genotypes dominant (GT dom)
+
+```{r gt_dom}
+gt.dom.df <- read.table(gt.dom.file, header = TRUE, sep = "\t", quote = "")
+dim(gt.dom.df)
+summary(as.factor(as.matrix(gt.dom.df)))
+#gt.dom.df[1:3,1:3]
+rm(gt.dom.df)
+```
+
+#Genotypes recessive (GT rec)
+
+```{r gt_rec}
+gt.rec.df <- read.table(gt.rec.file, header = TRUE, sep = "\t", quote = "")
+dim(gt.rec.df)
+summary(as.factor(as.matrix(gt.rec.df)))
+#gt.rec.df[1:3,1:3]
+rm(gt.rec.df)
+```
+
+#Depth per allele (AD)
+
+```{r ad}
+ad.df <- read.table(ad.file, header = TRUE, sep = "\t", quote = "")
+dim(ad.df)
+#ad.df[1:3,1:3]
+rm(ad.df)
+```
+
+#Genotypes likelihoods (LOD)
+
+```{r pl}
+lod.df <- read.table(lod.file, header = TRUE, sep = "\t", quote = "")
+dim(lod.df)
+#pl.df[1:3,1:3]
+rm(lod.df)
+```
+
+# final_section
+
+```{r final_section}
+
+ls()
+sessionInfo()
+Sys.time()
+
+```

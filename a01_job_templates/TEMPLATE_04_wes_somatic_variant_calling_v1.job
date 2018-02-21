@@ -1,0 +1,124 @@
+Job description file for somatic variant calling
+Ellie Fewings, 26Oct17
+
+TEMPLATE v1
+
+=========== Data location and analysis settings =============
+
+Data server: admin@mgqnap.medschl.cam.ac.uk
+Project location: /share/eleanor/gastric_Aug16
+
+project: gastric
+output raw variantset: IGP_L1
+
+tumour bam: IHCAP_x_tumour
+normal bam: IHCAP_x_normal
+
+SNP_TS: 97.0
+INDEL_TS: 95.0
+
+Note: Mixed are treared as INDELS
+
+======================= HPC settings ========================
+#WARNING: It is HIGHLY recommended to do this stage using Whisperwind due to time contraints on HPC. The script for somatic variant calling: ~/mtgroup_share/scripts/wes_somatic_pipeline_10.17/p04_somatic_variant_calling.sh.
+#To run somatic variant calling:
+#./p04_somatic_variant_calling.sh dataset tumour normal source_location results_location
+#dataset: The name you want to give your set of bams e.g. macT_Aug17
+#tumour: The name of your tumour sample e.g. IHCAP_8_01_T
+#normal: The name of your normal sample e.g. IHCAP_8_01_GM
+#source location: Location of bam files on mgqnap2 e.g. /share/libs/IGP_L1/processed/f01_bams
+#results location: Location on mgqnap2 to store results e.g. /share/Eleanor
+
+
+working_folder: /scratch/medgen/users/eleanor/Pipeline_working_directory/gastric_Aug16
+
+Account to use on HPC: TISCHKOWITZ-SL2
+Max time to request (hrs.min.sec): 03.00.00
+
+==================== Pipeline summary =======================
+
+#Joined variant calling and calculating stats 
+#to aid selection of thresholds for filtering
+
+===================== Standard settings =====================
+
+scripts_folder: /scratch/medgen/scripts/wes_somatic_pipeline_10.17/p04_wes_somatic_variant_calling
+start_script: a00_start_pipeline.sh
+
+maxAltAlleles: 6
+stand_emit_conf: 30.0
+stand_call_conf: 30.0
+
+Tools
+-----
+
+tools_folder: /scratch/medgen/tools
+java: java/jre1.8.0_40/bin/java
+gatk: gatk/gatk-3.6-0/GenomeAnalysisTK.jar
+
+bcftools: bcftools/bcftools-1.2/bin/bcftools
+plot_vcfstats: bcftools/bcftools-1.2/bin/plot-vcfstats
+
+Updated version of Python matplotlib library for plot-vcfstats script
+python_bin: python/python_2.7.10/bin/
+
+r_folder: r/R-3.2.0/bin
+
+r_bin_folder: r/R-3.2.2/bin/
+r_lib_folder: r/R-3.2.2/lib64/R/library
+
+Note about using different R versions
+-------------------------------------
+R-3.2.0 is used here for plotting in GATK-VQSR, 
+which requires a specific set of R-libraries.
+For being accessable by GATK, R-3.2.0 is added to PATH.
+  
+R-3.2.2 is used here to genereate html and pdf reports with rmarkdown.
+Generating reports with Rmarkdown is pernickety about environment. 
+It requires recent versions of several system libraries
+and a number of additional R libraries to be pre-installed.
+The external libraries are loaded as modules in *.sb.sh script:
+module load gcc/5.2.0
+module load boost/1.50.0
+module load texlive/2015
+module load pandoc/1.15.2.1
+Rmarkdown library has to be installed in the r_lib_folder
+shown above. 
+
+Historically, at the time of the scripts preparation, it happened
+that different sets of libraries were available in different versions
+of R installed in the toolbox. This resulted to the temporary configuration
+of using two different R versions at the same time. Then, there was 
+no time and need to change it.  
+
+See details details about required R-libraries in the 
+r-installation notes in the tools folder.
+
+Resources
+---------
+
+resources_folder: /scratch/medgen/resources
+
+decompressed_bundle_folder: gatk_bundle/b37/decompressed
+
+ref_genome: human_g1k_v37.fasta
+hapmap: hapmap_3.3.b37.vcf
+omni: 1000G_omni2.5.b37.vcf
+phase1_1k_hc: 1000G_phase1.snps.high_confidence.b37.vcf
+dbsnp_138: dbsnp_138.b37.vcf
+dbsnp_138_sites129: dbsnp_138.b37.excluding_sites_after_129.vcf
+mills: Mills_and_1000G_gold_standard.indels.b37.vcf
+
+targets_folder: illumina_nextera
+targets_intervals: nexterarapidcapture_exome_targetedregions_v1.2.b37.intervals
+
+targets_bed: nexterarapidcapture_exome_targetedregions_v1.2.b37.bed
+targets bed is not used yet in this version of the pipeline: 
+it could be used later to focus vcfstats on the targets
+
+Working sub-folders
+-------------------
+
+logs_folder: logs
+vcfstats_folder: vcfstats
+histograms_folder: histograms

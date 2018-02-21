@@ -1,0 +1,202 @@
+---
+output: html_document
+params: 
+  dataset: ""
+  working_folder: ""
+  data_file: ""
+  snp_ts: ""
+  indel_ts: ""
+---
+
+```{r setup_read_data, include=FALSE}
+
+# Make html report for genotyping step
+# Alexey Larionov
+# 30Aug2016
+
+# Read command line parameters
+
+ds <- params$dataset
+wf <- params$working_folder
+df <- params$data_file
+snp.ts <- params$snp_ts
+indel.ts <- params$indel_ts
+
+#ds <- "IGP_L1"
+#wf <- "/scratch/medgen/users/eleanor/Pipeline_working_directory/gastric_Aug16/gastric/IGP_L1_raw_vcf/histograms/"
+#df <- "/scratch/medgen/users/eleanor/Pipeline_working_directory/gastric_Aug16/gastric/IGP_L1_raw_vcf/histograms/IGP_L1_histograms_data.txt"
+#snp.ts <- "/scratch/medgen/users/eleanor/Pipeline_working_directory/gastric_Aug16/gastric/IGP_L1_raw_vcf/histograms/snp_tranches.txt"
+#indel.ts <- "/scratch/medgen/users/eleanor/Pipeline_working_directory/gastric_Aug16/gastric/IGP_L1_raw_vcf/histograms/indel_tranches.txt"
+
+# Set root folder
+library(knitr)
+opts_knit$set(root.dir = wf)
+
+# Set chunks' options
+knitr::opts_chunk$set(fig.width=7, fig.height=4, fig.align = 'center', fig.path=wf, echo=FALSE)
+
+# Read data
+x <- read.table(df, header=TRUE)
+attach(x)
+passed.filters <- FILTER == "PASS"
+
+# Count numbers of variants
+n.all <- format(dim(x)[1], big.mark = ",", trim=TRUE, scientific = FALSE)
+n.passed <- format(sum(passed.filters), big.mark = ",", trim=TRUE, scientific = FALSE)
+
+```
+
+<center> <H1> `r ds` </H1> </center> 
+<br>
+<center> <H3> Total number of variants emitted by HC: `r n.all` </H3> </center>
+<center> <H4> HC emits all variants with QUAL above the calling threshold (default 30) </H4> </center>
+<br>
+<center> <H4> Number of variants passed VQSR filters: `r n.passed` </H4> </center> 
+<center> <H4> VQSR TS filters are: `r snp.ts` (for SNPs) and `r indel.ts` (for INDELs)</H4> </center> 
+<br>
+
+# start_time
+
+```{r start_time}
+
+Sys.time()
+
+```
+
+# counts_tables
+
+```{r counts_tables}
+
+library(printr, lib='/scratch/medgen/tools/r/R-3.2.2/lib64/R/library/')
+
+# Filters summary
+n.types.all <- format(sum(table(FILTER, TYPE)), big.mark = ",", trim=TRUE, scientific = FALSE)
+c.types.all <- paste("Filters summary (all variants in the file, n=",n.types.all,")", sep ="")
+knitr::kable(table(FILTER, TYPE), format.args=list(big.mark=","), caption=c.types.all)
+
+# Recode MultiAllelic
+MultiAllelic <- as.vector(MultiAllelic)
+MultiAllelic[is.na(MultiAllelic)] <- "BiAllelic"
+MultiAllelic[MultiAllelic == "true"] <- "MultiAllelic"
+
+# MultiAllelic - all
+n.ma.all <- format(sum(table(MultiAllelic, TYPE)), big.mark = ",", trim=TRUE, scientific = FALSE)
+c.ma.all <- paste("Bi- and Multi- Allelic in all variants (",n.ma.all,")", sep ="")
+knitr::kable(table(MultiAllelic, TYPE), format.args=list(big.mark=","), caption=c.ma.all)
+
+# MultiAllelc - passed filter
+n.ma.pass <- format(sum(table(MultiAllelic[passed.filters], TYPE[passed.filters])), big.mark = ",", trim=TRUE, scientific = FALSE)
+c.ma.pass <- paste("Bi- and Multi- Allelic in variants passed filters (",n.ma.pass,")", sep ="")
+knitr::kable(table(MultiAllelic[passed.filters], TYPE[passed.filters]), format.args=list(big.mark=","), caption=c.ma.pass)
+
+```
+
+# get_avg_AS_VQSLOD
+
+```{r get_avg_AS_VQSLOD}
+
+myAvg_AS_VQSLOD <- function(x) {
+  options(warn=-1)
+  a <- as.vector(x)
+  b <- unlist(strsplit(a,","))
+  c <- as.numeric(b)
+  d <- mean(c, na.rm=TRUE)
+  options(warn=0)
+  d
+}
+
+VQSLOD <- as.numeric(lapply(AS_VQSLOD, myAvg_AS_VQSLOD))
+  
+```
+
+
+# SNP_VQSLOD_histogram
+
+```{r SNP_VQSLOD_histogram}
+
+hist(VQSLOD[VQSLOD >=-30 & VQSLOD <= 30 & TYPE == "SNP"], breaks=100, 
+     main="SNPs VQSLOD (zoom -30 to 30)", xlim=c(-30,30), xlab="VQSLOD")
+
+```
+
+# SNP_VQSR_tranches
+
+```{r SNP_VQSR_tranches}
+
+SNP_tranches_file <- paste(wf, "snp_tranches.txt",sep="/")
+SNP_tranches_df <- read.table(SNP_tranches_file, header=TRUE, sep=",", quote="")
+
+y <- SNP_tranches_df[,seq(1,7)]
+colnames(y) <- c("TS", "N Known", "N Novel", "Known TiTv", "Novel TiTv", "min VQSLod", "Filter")
+
+knitr::kable(y, format.args=list(big.mark=","), caption="SNP VQSR tranches")
+
+```
+
+# INDEL_VQSLOD_histogram
+
+```{r INDEL_VQSLOD_histograms}
+
+hist(VQSLOD[VQSLOD >=-30 & VQSLOD <= 30 & TYPE == "INDEL"], breaks=100, 
+     main="INDELs VQSLOD (zoom -30 to 30)", xlim=c(-30,30), xlab="VQSLOD")
+
+```
+
+# INDEL_VQSR_tranches
+
+```{r INDEL_tranches}
+
+INDEL_tranches_file <- paste(wf, "indel_tranches.txt",sep="/")
+INDEL_tranches_df <- read.table(INDEL_tranches_file, header=TRUE, sep=",", quote="")
+
+z <- INDEL_tranches_df[,seq(1,7)]
+colnames(z) <- c("TS", "N Known", "N Novel", "Known TiTv", "Novel TiTv", "min VQSLod", "Filter")
+
+knitr::kable(z, format.args=list(big.mark=","), caption="INDEL VQSR tranches")
+
+```
+
+# MIXED_VQSLOD_histogram
+
+```{r MIXED_VQSLOD_histogram}
+
+hist(VQSLOD[VQSLOD >=-30 & VQSLOD <= 30 & TYPE == "MIXED"], breaks=100, 
+     main="MIXEDs VQSLOD (zoom -30 to 30)", xlim=c(-30,30), xlab="VQSLOD")
+
+```
+
+# DP_histogram
+
+```{r DP_histogram}
+
+DP.cap <- floor(quantile(DP, 0.99)) # exclude 1% of excessive dp
+DP.zm.main <- paste("DP (zoom 0 - ",DP.cap,")", sep="")
+hist(DP[DP < DP.cap], breaks=100, xlim=c(0,DP.cap), main=DP.zm.main, xlab="DP")
+
+```
+
+# QUAL_histogram
+
+```{r QUAL_histogram}
+
+hist(QUAL[QUAL < 250], breaks=100, xlim=c(0,250), main="QUAL (zoom 0 - 250)", xlab="QUAL")
+
+```
+
+# Clenaup
+
+```{r Clenaup}
+
+detach(x)
+
+```
+
+# final_section
+
+```{r final_section}
+
+ls()
+sessionInfo()
+Sys.time()
+
+```
